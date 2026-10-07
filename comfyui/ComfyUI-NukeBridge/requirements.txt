@@ -1,0 +1,2 @@
+# torch, torchvision and numpy come with ComfyUI.
+# opencv-python is optional (fallback optical flow if the RAFT weights cannot be downloaded).

@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.exr
+*.mp4
+*.mov
+*.safetensors
+*.pth
+*.ckpt
+.DS_Store
+Thumbs.db

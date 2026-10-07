@@ -1,0 +1,535 @@
+{
+  "_nuke_bridge": {
+    "description": "NukeBridge ALL-IN-ONE (sequence). One EXR per frame: N = Sapiens2 on person + head crops, MoGe elsewhere, stabilized with optical flow | depth.Z = Video Depth Anything metric (stable, metres) | P = depth.Z + MoGe camera (fixed FOV) | A = LTX-2.5 Alpha Gen matte (or Sapiens2 segmentation, faster).",
+    "name": "A, N, Z, P",
+    "chunk": 25,
+    "overlap": 2,
+    "params": {
+      "fov_x_degrees (0 = auto)": [
+        "3",
+        "fov_x_degrees"
+      ],
+      "MoGe resolution_level": [
+        "3",
+        "resolution_level"
+      ],
+      "N stabilize radius (frames each side, 0 = off)": [
+        "11",
+        "stabilize_radius"
+      ],
+      "N stabilize sigma (lower = fewer ghosts)": [
+        "11",
+        "stabilize_sigma"
+      ],
+      "N anti-ghost max angle (deg, 0 = off)": [
+        "11",
+        "stabilize_max_angle"
+      ],
+      "VDA max_res": [
+        "6",
+        "max_res"
+      ],
+      "Sapiens normal size": [
+        "9",
+        "model_size"
+      ],
+      "Sapiens head pass (sharper faces)": [
+        "10",
+        "head_pass"
+      ],
+      "Sapiens crop padding": [
+        "10",
+        "padding"
+      ],
+      "write comparison layers (Nraw, Nmoge, depth_moge)": [
+        "11",
+        "comparison_layers"
+      ],
+      "Alpha from LTX (off = Sapiens2 segmentation, much faster)": [
+        "11",
+        "use_alpha_mask"
+      ],
+      "Alpha (LTX) max width": [
+        "20",
+        "max_width"
+      ],
+      "Alpha (LTX) seed": [
+        "30",
+        "noise_seed"
+      ]
+    }
+  },
+  "1": {
+    "class_type": "LoadImagesFromFolderKJ",
+    "_meta": {
+      "title": "NUKE_INPUT"
+    },
+    "inputs": {
+      "folder": "",
+      "width": -1,
+      "height": -1,
+      "keep_aspect_ratio": "crop",
+      "image_load_cap": 0,
+      "start_index": 0,
+      "include_subfolders": false
+    }
+  },
+  "2": {
+    "class_type": "LoadMoGeModel",
+    "_meta": {
+      "title": "MoGe 3 model"
+    },
+    "inputs": {
+      "model_name": "moge_3_vitg_fp16.safetensors"
+    }
+  },
+  "3": {
+    "class_type": "MoGeInference",
+    "_meta": {
+      "title": "MoGe 3 (camera, P, normals outside people)"
+    },
+    "inputs": {
+      "resolution_level": 9,
+      "fov_x_degrees": 86.0,
+      "batch_size": 1,
+      "force_projection": true,
+      "apply_mask": false,
+      "refine_steps": 3,
+      "moge_model": [
+        "2",
+        0
+      ],
+      "image": [
+        "1",
+        0
+      ]
+    }
+  },
+  "5": {
+    "class_type": "LoadVideoDepthAnythingModel",
+    "_meta": {
+      "title": "VDA model (metric)"
+    },
+    "inputs": {
+      "model": "metric_video_depth_anything_vitl.pth"
+    }
+  },
+  "6": {
+    "class_type": "VideoDepthAnythingProcess",
+    "_meta": {
+      "title": "Video Depth Anything (stable metric depth)"
+    },
+    "inputs": {
+      "input_size": 518,
+      "max_res": 1280,
+      "precision": "fp16",
+      "vda_model": [
+        "5",
+        0
+      ],
+      "images": [
+        "1",
+        0
+      ]
+    }
+  },
+  "7": {
+    "class_type": "Sapiens2ModelLoader",
+    "_meta": {
+      "title": "Sapiens2 segmentation model"
+    },
+    "inputs": {
+      "task": "segmentation",
+      "model_size": "1b",
+      "device": "cuda"
+    }
+  },
+  "8": {
+    "class_type": "Sapiens2Segmentation",
+    "_meta": {
+      "title": "Sapiens2 person mask"
+    },
+    "inputs": {
+      "invert": false,
+      "parts": "",
+      "model": [
+        "7",
+        0
+      ],
+      "image": [
+        "1",
+        0
+      ]
+    }
+  },
+  "9": {
+    "class_type": "Sapiens2ModelLoader",
+    "_meta": {
+      "title": "Sapiens2 normal model"
+    },
+    "inputs": {
+      "task": "normal",
+      "model_size": "1b",
+      "device": "cuda"
+    }
+  },
+  "10": {
+    "class_type": "Sapiens2NormalCrops",
+    "_meta": {
+      "title": "Sapiens2 Normal (person + head crops)"
+    },
+    "inputs": {
+      "padding": 0.08,
+      "head_pass": true,
+      "head_fraction": 0.3,
+      "feather_px": 24,
+      "mask_erode_px": 3,
+      "mask_blur_px": 6,
+      "model": [
+        "9",
+        0
+      ],
+      "image": [
+        "1",
+        0
+      ],
+      "labels": [
+        "8",
+        3
+      ]
+    }
+  },
+  "20": {
+    "class_type": "LTXAlphaPrep",
+    "_meta": {
+      "title": "LTX Alpha: prep plate (fit 1920, pad /32, 8n+1)"
+    },
+    "inputs": {
+      "max_width": 1920,
+      "max_height": 1088,
+      "images": [
+        "1",
+        0
+      ]
+    }
+  },
+  "21": {
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "LTX-2.5 distilled (int8)"
+    },
+    "inputs": {
+      "unet_name": "ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "22": {
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Alpha Gen IC-LoRA"
+    },
+    "inputs": {
+      "lora_name": "ltx-2.5-22b-ic-lora-alpha-gen-0.9.safetensors",
+      "strength_model": 1.0,
+      "model": [
+        "21",
+        0
+      ]
+    }
+  },
+  "23": {
+    "class_type": "GetICLoRAParameters",
+    "_meta": {
+      "title": "IC-LoRA parameters"
+    },
+    "inputs": {
+      "iclora_model": [
+        "22",
+        0
+      ]
+    }
+  },
+  "24": {
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Gemma text encoder (int8)"
+    },
+    "inputs": {
+      "clip_name": "gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors",
+      "type": "ltxv",
+      "device": "default"
+    }
+  },
+  "25": {
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "empty prompt"
+    },
+    "inputs": {
+      "text": "",
+      "clip": [
+        "24",
+        0
+      ]
+    }
+  },
+  "26": {
+    "class_type": "LTXVConditioning",
+    "_meta": {
+      "title": "LTXV conditioning (24 fps)"
+    },
+    "inputs": {
+      "frame_rate": 24.0,
+      "positive": [
+        "25",
+        0
+      ],
+      "negative": [
+        "25",
+        0
+      ]
+    }
+  },
+  "27": {
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "LTX video VAE (conv)"
+    },
+    "inputs": {
+      "vae_name": "ltx-2.5-video-vae-conv-bf16.safetensors"
+    }
+  },
+  "28": {
+    "class_type": "EmptyLTXVLatentVideo",
+    "_meta": {
+      "title": "empty latent"
+    },
+    "inputs": {
+      "width": [
+        "20",
+        1
+      ],
+      "height": [
+        "20",
+        2
+      ],
+      "length": [
+        "20",
+        3
+      ],
+      "batch_size": 1
+    }
+  },
+  "29": {
+    "class_type": "LTXVAddGuide",
+    "_meta": {
+      "title": "plate as IC-LoRA reference"
+    },
+    "inputs": {
+      "frame_idx": 0,
+      "strength": 1.0,
+      "positive": [
+        "26",
+        0
+      ],
+      "negative": [
+        "26",
+        1
+      ],
+      "vae": [
+        "27",
+        0
+      ],
+      "latent": [
+        "28",
+        0
+      ],
+      "image": [
+        "20",
+        0
+      ],
+      "iclora_parameters": [
+        "23",
+        0
+      ]
+    }
+  },
+  "30": {
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "noise"
+    },
+    "inputs": {
+      "noise_seed": 1234
+    }
+  },
+  "31": {
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "sampler"
+    },
+    "inputs": {
+      "sampler_name": "euler_ancestral"
+    }
+  },
+  "32": {
+    "class_type": "ManualSigmas",
+    "_meta": {
+      "title": "distilled sigmas (8 steps)"
+    },
+    "inputs": {
+      "sigmas": "1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0"
+    }
+  },
+  "33": {
+    "class_type": "CFGGuider",
+    "_meta": {
+      "title": "guider (cfg 1)"
+    },
+    "inputs": {
+      "cfg": 1.0,
+      "model": [
+        "22",
+        0
+      ],
+      "positive": [
+        "29",
+        0
+      ],
+      "negative": [
+        "29",
+        1
+      ]
+    }
+  },
+  "34": {
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "sample matte"
+    },
+    "inputs": {
+      "noise": [
+        "30",
+        0
+      ],
+      "guider": [
+        "33",
+        0
+      ],
+      "sampler": [
+        "31",
+        0
+      ],
+      "sigmas": [
+        "32",
+        0
+      ],
+      "latent_image": [
+        "29",
+        2
+      ]
+    }
+  },
+  "35": {
+    "class_type": "LTXVCropGuides",
+    "_meta": {
+      "title": "remove reference frames"
+    },
+    "inputs": {
+      "positive": [
+        "29",
+        0
+      ],
+      "negative": [
+        "29",
+        1
+      ],
+      "latent": [
+        "34",
+        0
+      ]
+    }
+  },
+  "36": {
+    "class_type": "VAEDecodeTiled",
+    "_meta": {
+      "title": "decode matte"
+    },
+    "inputs": {
+      "tile_size": 512,
+      "overlap": 64,
+      "temporal_size": 64,
+      "temporal_overlap": 16,
+      "samples": [
+        "35",
+        2
+      ],
+      "vae": [
+        "27",
+        0
+      ]
+    }
+  },
+  "37": {
+    "class_type": "LTXAlphaFinish",
+    "_meta": {
+      "title": "LTX Alpha: finish matte (unpad, plate size)"
+    },
+    "inputs": {
+      "matte": [
+        "36",
+        0
+      ],
+      "pad_info": [
+        "20",
+        4
+      ]
+    }
+  },
+  "11": {
+    "class_type": "SaveMoGeEXR",
+    "_meta": {
+      "title": "Save EXR for Nuke"
+    },
+    "inputs": {
+      "filename_prefix": "nuke_geo",
+      "half_float_normals": true,
+      "override_flip_x": false,
+      "override_flip_y": false,
+      "override_flip_z": false,
+      "comparison_layers": false,
+      "stabilize_radius": 2,
+      "stabilize_sigma": 0.04,
+      "stabilize_max_angle": 15.0,
+      "use_alpha_mask": true,
+      "moge_geometry": [
+        "3",
+        0
+      ],
+      "detail_normals": [
+        "10",
+        0
+      ],
+      "detail_mask": [
+        "10",
+        1
+      ],
+      "depth_override": [
+        "6",
+        0
+      ],
+      "plate": [
+        "1",
+        0
+      ],
+      "person_labels": [
+        "8",
+        3
+      ],
+      "alpha_mask": [
+        "37",
+        0
+      ]
+    }
+  }
+}
