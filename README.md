@@ -77,8 +77,10 @@ To check the connection, open the panel with ComfyUI running: the model settings
 
 ## Use
 
-Open the panel, pick a workflow, check the frame range then select a Read (or any node), open the panel, check the frame range and output folder, press **Generate**.
-(main workflow)
+Select a Read (or any node), open the panel, pick a workflow, check the frame range and output folder, press **Generate**.
+
+With the main workflow (A, N, Z, P):
+
 - The frames are rendered as the viewer shows them (same OCIO display / view), because the models expect display-referred images.
 - They are sent in batches of 25 frames, with 2 extra frames on each side so the stabilization has neighbours at batch boundaries.
 - The EXRs are written to `<output>/<source name>/<workflow>/geo/` and loaded as a raw Read.
