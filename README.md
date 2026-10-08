@@ -77,8 +77,8 @@ To check the connection, open the panel with ComfyUI running: the model settings
 
 ## Use
 
-Select a Read (or any node), open the panel, check the frame range and output folder, press **Generate**.
-
+Open the panel, pick a workflow, check the frame range then select a Read (or any node), open the panel, check the frame range and output folder, press **Generate**.
+(main workflow)
 - The frames are rendered as the viewer shows them (same OCIO display / view), because the models expect display-referred images.
 - They are sent in batches of 25 frames, with 2 extra frames on each side so the stabilization has neighbours at batch boundaries.
 - The EXRs are written to `<output>/<source name>/<workflow>/geo/` and loaded as a raw Read.
@@ -159,7 +159,7 @@ The JSON is read again at each **Generate**, so you can edit the defaults withou
 
 ## Limits
 
-- The person crops are fixed per batch: someone crossing the frame gets a large crop and less detail.
+- The body crops are fixed per batch: someone crossing the frame gets a large body crop and less detail (the head crop follows the head).
 - Very fast motion can still soften a little after stabilization.
 - Depth and camera are estimates: fine for relighting or defocus, not for matchmove.
 - The matte is computed at 1920 wide at most: on larger plates it is scaled back up, so its edges are a bit softer than the plate.
