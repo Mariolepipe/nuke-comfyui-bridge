@@ -113,6 +113,8 @@ The panel lists every API-format JSON file in `nuke/comfy_bridge/workflows/`. An
 - **Output:** one save node whose `filename_prefix` starts with `nuke_`, writing one image per input frame. The rest of the prefix is the pass name and the output sub-folder: `nuke_blur` → `<output>/<source name>/<workflow>/blur/`. **Save MoGe EXR (Nuke)** from this pack gives `.exr` files, any other save node (e.g. **Save Image**) gives `.png`.
 - Everything in between is up to you.
 
+The frames are sent as the viewer shows them (see *Use*), and the result comes back as a raw Read, with no colour transform. That is right for data passes (normals, depth, mattes). For a workflow that returns an image, the result will not match the plate's colours in Nuke: add an **OCIODisplay** node after the Read, set to the same display / view as your viewer, with **invert** checked.
+
 Run it once in ComfyUI to check it works, then **Workflow › Export (API)** and save the JSON into `nuke/comfy_bridge/workflows/`. Close and reopen the panel: the workflow appears in the menu, under its file name.
 
 ### 2. Add settings to the panel (optional)
