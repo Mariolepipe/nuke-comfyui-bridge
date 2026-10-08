@@ -62,9 +62,18 @@ Restart ComfyUI.
 
 ### 3. Nuke
 
-Paste `nuke/menu_snippet.py` at the end of `~/.nuke/menu.py` and set `BRIDGE_ROOT` to the `nuke` folder of this repository. Restart Nuke: **ComfyUI › Generate passes…** (`Ctrl+Alt+G`).
+1. Open (or create) your `menu.py`:
+   - Windows: `C:\Users\<you>\.nuke\menu.py`
+   - macOS / Linux: `~/.nuke/menu.py`
+2. Paste the content of [`nuke/menu_snippet.py`](nuke/menu_snippet.py) at the end of it.
+3. In the pasted lines, set:
+   - `BRIDGE_ROOT`: the path to the `nuke` folder of this repository (the folder that contains `comfy_bridge`). On Windows, use forward slashes: `"C:/tools/nuke-comfyui-bridge/nuke"`.
+   - `COMFY_BRIDGE_URL`: the address of your ComfyUI, as shown in the browser tab when ComfyUI is open. ComfyUI started from the command line uses `http://127.0.0.1:8188`; the ComfyUI Desktop app often uses port `8000`. The address can also be changed in the panel for the current session.
+4. Restart Nuke. The panel is in **ComfyUI › Generate passes…** (`Ctrl+Alt+G`).
 
-ComfyUI is expected at `http://127.0.0.1:8188` (editable in the panel, or set `COMFY_BRIDGE_URL`).
+ComfyUI has to run on the same machine as Nuke: the frames are passed to it as a folder on disk.
+
+To check the connection, open the panel with ComfyUI running: the model settings (e.g. *Sapiens normal size*) show as menus filled from your ComfyUI. If ComfyUI is not reachable, **Generate** reports "Cannot reach ComfyUI at …".
 
 ## Use
 
@@ -94,24 +103,52 @@ Select a Read (or any node), open the panel, check the frame range and output fo
 
 ## Your own workflows
 
-The panel lists every API-format workflow in `nuke/comfy_bridge/workflows/` (in ComfyUI: **Workflow › Export (API)**). To work with the bridge, a workflow needs:
+The panel lists every API-format JSON file in `nuke/comfy_bridge/workflows/`. Any ComfyUI workflow can be added, as long as it follows two rules.
 
-- a **Load Images From Folder (KJ)** node titled `NUKE_INPUT`: the bridge fills in the folder and the frame count, and loads the frames at the size Nuke rendered them (its width / height are ignored);
-- one save node whose `filename_prefix` starts with `nuke_` and that writes one file per frame. The rest of the prefix is the pass name (`nuke_normal` → `normal`). An EXR save node gives `.exr` files, anything else `.png`.
+### 1. Build it in ComfyUI
 
-Optional: a top-level `"_nuke_bridge"` entry in the JSON sets the description, the batch size and the settings shown in the panel:
+- **Input:** a **Load Images From Folder (KJ)** node, renamed `NUKE_INPUT` (double-click its title). Leave its `folder` as anything: the bridge fills in the folder and the frame count, and loads the frames at the size Nuke rendered them (the node's width / height are ignored).
+- **Output:** one save node whose `filename_prefix` starts with `nuke_`, writing one image per input frame. The rest of the prefix is the pass name and the output sub-folder: `nuke_blur` → `<output>/<source name>/<workflow>/blur/`. **Save MoGe EXR (Nuke)** from this pack gives `.exr` files, any other save node (e.g. **Save Image**) gives `.png`.
+- Everything in between is up to you.
+
+Run it once in ComfyUI to check it works, then **Workflow › Export (API)** and save the JSON into `nuke/comfy_bridge/workflows/`. Close and reopen the panel: the workflow appears in the menu, under its file name.
+
+### 2. Add settings to the panel (optional)
+
+Open the exported JSON in a text editor and add a `"_nuke_bridge"` entry at the top, next to the node entries. [`example_blur.json`](nuke/comfy_bridge/workflows/example_blur.json) is a complete example (a plate blurred with **Image Blur**); shortened here:
 
 ```json
-"_nuke_bridge": {
-  "name": "My normals",
-  "description": "Sapiens2 normals only",
-  "chunk": 25,
-  "overlap": 2,
-  "params": {"Steps": ["5", "steps"]}
+{
+  "_nuke_bridge": {
+    "name": "Example: blur",
+    "description": "Blurs the plate, radius and sigma set from the panel.",
+    "chunk": 10,
+    "params": {
+      "Blur radius": ["2", "blur_radius"],
+      "Blur sigma": ["2", "sigma"]
+    }
+  },
+  "1": { "class_type": "LoadImagesFromFolderKJ", "_meta": {"title": "NUKE_INPUT"}, "inputs": {"...": "..."} },
+  "2": { "class_type": "ImageBlur", "inputs": {"blur_radius": 5, "sigma": 2.0, "image": ["1", 0]} },
+  "3": { "class_type": "SaveImage", "inputs": {"filename_prefix": "nuke_blur", "images": ["2", 0]} }
 }
 ```
 
-`params` maps a label to `[node id, input name]`. Without `chunk`, the whole range is sent in one batch.
+| key | what it does |
+|---|---|
+| `name` | name shown in the panel's workflow menu (default: the file name) |
+| `description` | text shown under the menu |
+| `chunk` | number of frames sent per batch; without it, the whole range is sent at once (fine for light workflows, too much memory for heavy ones) |
+| `overlap` | extra frames sent on each side of a batch and then dropped, for workflows that look at neighbouring frames (the main workflow uses 2) |
+| `params` | the settings shown in the panel: `"label": ["node id", "input name"]` |
+
+For each setting in `params`:
+
+- **node id** is the number used as key in the exported JSON (`"2"` above). ComfyUI can also show it on each node (the *Node ID badge* option in its settings).
+- **input name** is the name written in that node's `"inputs"` (`"blur_radius"`), not the label shown in the ComfyUI interface, which can be translated.
+- The value already in the JSON is the default, and its type picks the field in Nuke: `true` / `false` → checkbox, `5` → integer, `2.0` → decimal (write `1.0`, not `1`, to get a decimal field), text → text field. Inputs that are lists in ComfyUI (models, samplers…) become a menu filled from your ComfyUI.
+
+The JSON is read again at each **Generate**, so you can edit the defaults without restarting Nuke. A new workflow file needs the panel to be reopened.
 
 ## Workflows for the ComfyUI editor
 

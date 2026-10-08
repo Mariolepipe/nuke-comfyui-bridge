@@ -1,0 +1,27 @@
+{
+  "_nuke_bridge": {
+    "name": "Example: blur",
+    "description": "Example workflow (see README, Your own workflows): blurs the plate, radius and sigma set from the panel.",
+    "chunk": 10,
+    "params": {
+      "Blur radius": ["2", "blur_radius"],
+      "Blur sigma": ["2", "sigma"]
+    }
+  },
+  "1": {
+    "inputs": {"folder": "", "width": -1, "height": -1, "keep_aspect_ratio": "crop",
+               "image_load_cap": 0, "start_index": 0, "include_subfolders": false},
+    "class_type": "LoadImagesFromFolderKJ",
+    "_meta": {"title": "NUKE_INPUT"}
+  },
+  "2": {
+    "inputs": {"blur_radius": 5, "sigma": 2.0, "image": ["1", 0]},
+    "class_type": "ImageBlur",
+    "_meta": {"title": "Image Blur"}
+  },
+  "3": {
+    "inputs": {"filename_prefix": "nuke_blur", "images": ["2", 0]},
+    "class_type": "SaveImage",
+    "_meta": {"title": "Save Image"}
+  }
+}
