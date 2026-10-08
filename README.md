@@ -96,7 +96,7 @@ Select a Read (or any node), open the panel, check the frame range and output fo
 
 The panel lists every API-format workflow in `nuke/comfy_bridge/workflows/` (in ComfyUI: **Workflow › Export (API)**). To work with the bridge, a workflow needs:
 
-- a **Load Images From Folder (KJ)** node titled `NUKE_INPUT`: the bridge fills in the folder and the frame count;
+- a **Load Images From Folder (KJ)** node titled `NUKE_INPUT`: the bridge fills in the folder and the frame count, and loads the frames at the size Nuke rendered them (its width / height are ignored);
 - one save node whose `filename_prefix` starts with `nuke_` and that writes one file per frame. The rest of the prefix is the pass name (`nuke_normal` → `normal`). An EXR save node gives `.exr` files, anything else `.png`.
 
 Optional: a top-level `"_nuke_bridge"` entry in the JSON sets the description, the batch size and the settings shown in the panel:

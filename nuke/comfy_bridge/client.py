@@ -153,7 +153,9 @@ class Workflow(object):
 
     def build(self, folder, count, tag, overrides=None):
         g = copy.deepcopy(self.graph)
-        g[self.input_id]["inputs"].update({"folder": folder, "image_load_cap": count, "start_index": 0})
+        # width / height -1: frames load at the size Nuke rendered them, whatever the node was set to
+        g[self.input_id]["inputs"].update({"folder": folder, "image_load_cap": count, "start_index": 0,
+                                           "width": -1, "height": -1})
         g[self.save_id]["inputs"]["filename_prefix"] = "nuke_bridge/%s" % tag
         for (nid, key), value in (overrides or {}).items():
             if nid in g:
